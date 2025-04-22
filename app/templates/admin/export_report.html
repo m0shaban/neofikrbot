@@ -1,0 +1,214 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}تصدير التقرير - NeoFikr Solutions{% endblock %}
+
+{% block page_title %}تصدير التقرير{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('admin.reports') }}" class="btn btn-sm btn-outline-primary">
+    <i class="fas fa-arrow-right me-1"></i> العودة للتقارير
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">تفاصيل التقرير</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">الفترة</label>
+                    <p class="mb-0">{{ period }}</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">نوع التقرير</label>
+                    <p class="mb-0">
+                        {% if report_type == 'orders' %}
+                            الطلبات
+                        {% elif report_type == 'customers' %}
+                            العملاء
+                        {% elif report_type == 'services' %}
+                            الخدمات
+                        {% else %}
+                            تقرير شامل
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">صيغة التصدير</label>
+                    <p class="mb-0">
+                        {% if report_format == 'excel' %}
+                            <i class="fas fa-file-excel text-success me-1"></i> Excel
+                        {% elif report_format == 'pdf' %}
+                            <i class="fas fa-file-pdf text-danger me-1"></i> PDF
+                        {% else %}
+                            <i class="fas fa-file-csv text-primary me-1"></i> CSV
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-1"></i>
+            هذه معاينة للتقرير. سيتم قريباً تفعيل خاصية التصدير المباشر إلى {{ report_format|upper }}.
+        </div>
+    </div>
+</div>
+
+{% if report_type == 'orders' or report_type == 'all' %}
+<!-- قسم الطلبات -->
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">الطلبات</h5>
+        <span class="badge bg-primary rounded-pill">{{ orders|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>العميل</th>
+                        <th>الخدمة</th>
+                        <th>الحالة</th>
+                        <th>التاريخ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>{{ order.id }}</td>
+                        <td>{{ order.customer.name if order.customer else 'غير معروف' }}</td>
+                        <td>{{ order.service_type or 'استفسار عام' }}</td>
+                        <td>
+                            {% if order.status == 'جديد' %}
+                                <span class="badge bg-danger">{{ order.status }}</span>
+                            {% elif order.status == 'قيد المعالجة' %}
+                                <span class="badge bg-warning">{{ order.status }}</span>
+                            {% elif order.status == 'مكتمل' %}
+                                <span class="badge bg-success">{{ order.status }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4">لا توجد طلبات في هذه الفترة</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if report_type == 'customers' or report_type == 'all' %}
+<!-- قسم العملاء -->
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">العملاء</h5>
+        <span class="badge bg-primary rounded-pill">{{ customers|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>الاسم</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>الهاتف</th>
+                        <th>عدد الطلبات</th>
+                        <th>تاريخ التسجيل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td>{{ customer.id }}</td>
+                        <td>{{ customer.name or 'غير محدد' }}</td>
+                        <td>{{ customer.email or 'غير محدد' }}</td>
+                        <td>{{ customer.phone or 'غير محدد' }}</td>
+                        <td>{{ customer.orders|length }}</td>
+                        <td>{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">لا يوجد عملاء في هذه الفترة</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if report_type == 'services' or report_type == 'all' %}
+<!-- قسم الخدمات -->
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">تقرير الخدمات</h5>
+        <span class="badge bg-primary rounded-pill">{{ services|length }}</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>نوع الخدمة</th>
+                        <th>عدد الطلبات</th>
+                        <th>النسبة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set total = orders|length %}
+                    {% for service_type, count in services %}
+                    <tr>
+                        <td>{{ service_type or 'استفسار عام' }}</td>
+                        <td>{{ count }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="progress flex-grow-1" style="height: 8px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (count / total * 100)|round }}%" aria-valuenow="{{ (count / total * 100)|round }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <span class="ms-2">{{ (count / total * 100)|round|int }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center py-4">لا توجد بيانات خدمات في هذه الفترة</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- زر تنزيل التقرير -->
+<div class="text-center mt-4">
+    <div class="alert alert-light border">
+        <p class="mb-2">سيتم دعم تنزيل التقارير بالصيغ المختلفة في إصدار لاحق.</p>
+        <p class="mb-0">للحصول على نسخة من هذا التقرير، يمكنك طباعة الصفحة أو حفظها كـ PDF من المتصفح.</p>
+    </div>
+    
+    <button type="button" class="btn btn-primary mt-2" onclick="window.print()">
+        <i class="fas fa-print me-1"></i> طباعة التقرير
+    </button>
+</div>
+{% endblock %}

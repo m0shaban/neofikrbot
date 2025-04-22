@@ -1,0 +1,191 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}لوحة التحكم - NeoFikr Solutions{% endblock %}
+
+{% block page_title %}لوحة التحكم{% endblock %}
+
+{% block content %}
+<!-- بطاقات الإحصائيات -->
+<div class="row">
+    <div class="col-lg-4 col-md-6">
+        <div class="card card-dashboard bg-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">إجمالي العملاء</h6>
+                        <div class="stat-number">{{ total_customers }}</div>
+                    </div>
+                    <div class="icon-shape bg-light text-primary rounded-circle p-3">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6">
+        <div class="card card-dashboard bg-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">إجمالي الطلبات</h6>
+                        <div class="stat-number">{{ total_orders }}</div>
+                    </div>
+                    <div class="icon-shape bg-light text-primary rounded-circle p-3">
+                        <i class="fas fa-shopping-cart fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6">
+        <div class="card card-dashboard bg-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">طلبات جديدة</h6>
+                        <div class="stat-number">{{ new_orders }}</div>
+                    </div>
+                    <div class="icon-shape bg-light text-danger rounded-circle p-3">
+                        <i class="fas fa-bell fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- الطلبات الأخيرة -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card card-dashboard">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">آخر الطلبات</h5>
+                    <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-primary">عرض الكل</a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>العميل</th>
+                                <th>نوع الخدمة</th>
+                                <th>التاريخ</th>
+                                <th>الحالة</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>{{ order.id }}</td>
+                                <td>
+                                    {% if order.customer %}
+                                        {{ order.customer.name or 'غير محدد' }}
+                                    {% else %}
+                                        غير محدد
+                                    {% endif %}
+                                </td>
+                                <td>{{ order.service_type or 'استفسار عام' }}</td>
+                                <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if order.status == 'جديد' %}
+                                        <span class="badge bg-danger">{{ order.status }}</span>
+                                    {% elif order.status == 'قيد المعالجة' %}
+                                        <span class="badge bg-warning">{{ order.status }}</span>
+                                    {% elif order.status == 'مكتمل' %}
+                                        <span class="badge bg-success">{{ order.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ order.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('admin.order_details', order_id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">لا توجد طلبات حتى الآن</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- إحصائيات الطلبات -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card card-dashboard">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">إحصائيات حسب الحالة</h5>
+            </div>
+            <div class="card-body">
+                {% for status, count in status_stats %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ status }}</span>
+                        <span class="fw-bold">{{ count }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        {% if status == 'جديد' %}
+                            <div class="progress-bar bg-danger" style="width: {{ (count / total_orders * 100)|round }}%"></div>
+                        {% elif status == 'قيد المعالجة' %}
+                            <div class="progress-bar bg-warning" style="width: {{ (count / total_orders * 100)|round }}%"></div>
+                        {% elif status == 'مكتمل' %}
+                            <div class="progress-bar bg-success" style="width: {{ (count / total_orders * 100)|round }}%"></div>
+                        {% else %}
+                            <div class="progress-bar bg-secondary" style="width: {{ (count / total_orders * 100)|round }}%"></div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-center text-muted py-4">لا توجد بيانات حتى الآن</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card card-dashboard h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">إجراءات سريعة</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <a href="{{ url_for('admin.orders', status='جديد') }}" class="btn btn-outline-danger w-100 h-100 d-flex flex-column justify-content-center align-items-center py-3">
+                            <i class="fas fa-bell mb-2 fa-2x"></i>
+                            الطلبات الجديدة
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center align-items-center py-3">
+                            <i class="fas fa-users mb-2 fa-2x"></i>
+                            إدارة العملاء
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center align-items-center py-3">
+                            <i class="fas fa-chart-bar mb-2 fa-2x"></i>
+                            تقارير وإحصائيات
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center align-items-center py-3">
+                            <i class="fas fa-search mb-2 fa-2x"></i>
+                            جميع الطلبات
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

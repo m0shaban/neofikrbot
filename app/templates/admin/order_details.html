@@ -1,0 +1,193 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}تفاصيل الطلب #{{ order.id }} - NeoFikr Solutions{% endblock %}
+
+{% block page_title %}تفاصيل الطلب #{{ order.id }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-arrow-right me-1"></i> العودة للطلبات
+    </a>
+    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#statusModal">
+        <i class="fas fa-edit me-1"></i> تحديث الحالة
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- معلومات الطلب -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">معلومات الطلب</h5>
+                <span class="badge 
+                    {% if order.status == 'جديد' %}
+                        bg-danger
+                    {% elif order.status == 'قيد المعالجة' %}
+                        bg-warning
+                    {% elif order.status == 'مكتمل' %}
+                        bg-success
+                    {% else %}
+                        bg-secondary
+                    {% endif %}">
+                    {{ order.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-muted">نوع الخدمة:</h6>
+                    <p class="fs-5">{{ order.service_type or 'استفسار عام' }}</p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-muted">تفاصيل الطلب:</h6>
+                    <div class="p-3 bg-light rounded">
+                        <pre style="white-space: pre-wrap; font-family: 'Tajawal', sans-serif;">{{ order.details }}</pre>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted">تاريخ الإنشاء:</h6>
+                        <p>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted">آخر تحديث:</h6>
+                        <p>{{ order.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- إضافة ملاحظات -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">إضافة ملاحظات</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('admin.update_order', order_id=order.id) }}" method="post">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">ملاحظات للطلب (سيتم إضافتها إلى تفاصيل الطلب)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="أضف ملاحظات حول هذا الطلب..."></textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">حفظ الملاحظات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- معلومات العميل -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">معلومات العميل</h5>
+            </div>
+            <div class="card-body">
+                {% if customer %}
+                <div class="text-center mb-3">
+                    <div class="avatar mb-3">
+                        {% if customer.facebook_id %}
+                            <img src="https://graph.facebook.com/{{ customer.facebook_id }}/picture?type=large" alt="{{ customer.name }}" class="rounded-circle img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                        {% else %}
+                            <div style="width: 100px; height: 100px; background-color: #e9ecef; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                <i class="fas fa-user fa-3x text-secondary"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <h5>{{ customer.name or 'غير محدد' }}</h5>
+                    <a href="{{ url_for('admin.customer_details', customer_id=customer.id) }}" class="btn btn-sm btn-outline-primary">
+                        عرض الملف الكامل
+                    </a>
+                </div>
+                <div class="mt-4">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item px-0 d-flex justify-content-between">
+                            <span class="text-muted">البريد الإلكتروني:</span>
+                            <span>{{ customer.email or 'غير محدد' }}</span>
+                        </li>
+                        <li class="list-group-item px-0 d-flex justify-content-between">
+                            <span class="text-muted">رقم الهاتف:</span>
+                            <span>{{ customer.phone or 'غير محدد' }}</span>
+                        </li>
+                        <li class="list-group-item px-0 d-flex justify-content-between">
+                            <span class="text-muted">تاريخ التسجيل:</span>
+                            <span>{{ customer.created_at.strftime('%Y-%m-%d') }}</span>
+                        </li>
+                        <li class="list-group-item px-0 d-flex justify-content-between">
+                            <span class="text-muted">عدد الطلبات:</span>
+                            <span class="badge bg-primary rounded-pill">{{ customer.orders|length }}</span>
+                        </li>
+                    </ul>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <div class="mb-3">
+                        <i class="fas fa-user-slash fa-3x text-muted"></i>
+                    </div>
+                    <p class="text-muted">لم يتم العثور على بيانات العميل</p>
+                </div>
+                {% endif %}
+                
+                <!-- أزرار التواصل -->
+                {% if customer %}
+                <div class="mt-3">
+                    <h6 class="text-muted mb-3">التواصل مع العميل:</h6>
+                    <div class="d-grid gap-2">
+                        {% if customer.facebook_id %}
+                        <a href="https://m.me/{{ customer.facebook_id }}" target="_blank" class="btn btn-outline-primary">
+                            <i class="fab fa-facebook-messenger me-1"></i> مراسلة عبر ماسنجر
+                        </a>
+                        {% endif %}
+                        {% if customer.phone %}
+                        <a href="https://wa.me/{{ customer.phone }}" target="_blank" class="btn btn-outline-success">
+                            <i class="fab fa-whatsapp me-1"></i> مراسلة عبر واتساب
+                        </a>
+                        {% endif %}
+                        {% if customer.email %}
+                        <a href="mailto:{{ customer.email }}" target="_blank" class="btn btn-outline-secondary">
+                            <i class="far fa-envelope me-1"></i> إرسال بريد إلكتروني
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تحديث الحالة -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalLabel">تحديث حالة الطلب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin.update_order', order_id=order.id) }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="status" class="form-label">الحالة الجديدة</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="جديد" {% if order.status == 'جديد' %}selected{% endif %}>جديد</option>
+                            <option value="قيد المعالجة" {% if order.status == 'قيد المعالجة' %}selected{% endif %}>قيد المعالجة</option>
+                            <option value="مكتمل" {% if order.status == 'مكتمل' %}selected{% endif %}>مكتمل</option>
+                            <option value="ملغي" {% if order.status == 'ملغي' %}selected{% endif %}>ملغي</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status_notes" class="form-label">ملاحظات التحديث (اختياري)</label>
+                        <textarea class="form-control" id="status_notes" name="notes" rows="3" placeholder="أضف أي ملاحظات حول تغيير الحالة..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">تحديث الحالة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

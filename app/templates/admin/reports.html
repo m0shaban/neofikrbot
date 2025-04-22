@@ -1,0 +1,311 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}التقارير والإحصائيات - NeoFikr Solutions{% endblock %}
+
+{% block page_title %}التقارير والإحصائيات{% endblock %}
+
+{% block page_actions %}
+<div class="dropdown">
+    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="periodDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-calendar me-1"></i> {{ period_text }}
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="periodDropdown">
+        <li><a class="dropdown-item {% if period == 'day' %}active{% endif %}" href="{{ url_for('admin.reports', period='day') }}">اليوم</a></li>
+        <li><a class="dropdown-item {% if period == 'week' %}active{% endif %}" href="{{ url_for('admin.reports', period='week') }}">آخر أسبوع</a></li>
+        <li><a class="dropdown-item {% if period == 'month' %}active{% endif %}" href="{{ url_for('admin.reports', period='month') }}">آخر شهر</a></li>
+        <li><a class="dropdown-item {% if period == 'year' %}active{% endif %}" href="{{ url_for('admin.reports', period='year') }}">هذا العام</a></li>
+        <li><a class="dropdown-item {% if period == 'all' %}active{% endif %}" href="{{ url_for('admin.reports', period='all') }}">كل الفترات</a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- بطاقات الملخص -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card card-dashboard bg-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">إجمالي الطلبات</h6>
+                        <div class="stat-number">{{ total_orders }}</div>
+                    </div>
+                    <div class="icon-shape bg-light text-primary rounded-circle p-3">
+                        <i class="fas fa-shopping-cart fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-dashboard bg-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">العملاء الجدد</h6>
+                        <div class="stat-number">{{ new_customers }}</div>
+                    </div>
+                    <div class="icon-shape bg-light text-success rounded-circle p-3">
+                        <i class="fas fa-user-plus fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-dashboard bg-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">معدل التفاعل</h6>
+                        <div class="stat-number">{{ engagement_rate }}%</div>
+                    </div>
+                    <div class="icon-shape bg-light text-info rounded-circle p-3">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-dashboard bg-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">اكتمال الطلبات</h6>
+                        <div class="stat-number">{{ completion_rate }}%</div>
+                    </div>
+                    <div class="icon-shape bg-light text-success rounded-circle p-3">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- رسم بياني للطلبات -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">تطور الطلبات</h5>
+            </div>
+            <div class="card-body">
+                <!-- رسم بياني للطلبات -->
+                <div id="ordersChart" class="chart-container" style="position: relative; height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">توزيع حالات الطلبات</h5>
+            </div>
+            <div class="card-body">
+                <!-- رسم بياني دائري -->
+                <div id="statusPieChart" class="chart-container" style="position: relative; height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- أكثر الخدمات طلباً -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">أكثر الخدمات طلباً</h5>
+            </div>
+            <div class="card-body">
+                {% for service, count in service_stats %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ service or 'استفسار عام' }}</span>
+                        <span class="fw-bold">{{ count }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary" style="width: {{ (count / total_orders * 100)|round }}%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-center text-muted py-4">لا توجد بيانات حتى الآن</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">العملاء الأكثر نشاطاً</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>العميل</th>
+                                <th>الطلبات</th>
+                                <th>آخر تفاعل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in top_customers %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if customer.facebook_id %}
+                                        <img src="https://graph.facebook.com/{{ customer.facebook_id }}/picture?type=normal" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" alt="{{ customer.name }}">
+                                        {% else %}
+                                        <div class="rounded-circle me-2 bg-light d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                            <i class="fas fa-user text-secondary"></i>
+                                        </div>
+                                        {% endif %}
+                                        <div>{{ customer.name or 'غير محدد' }}</div>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-primary rounded-pill">{{ customer.orders|length }}</span></td>
+                                <td>{{ customer.last_interaction.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center py-4">لا توجد بيانات حتى الآن</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- تصدير التقارير -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">تصدير التقارير</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="exportPeriod" class="form-label">الفترة</label>
+                    <select class="form-select" id="exportPeriod" name="exportPeriod">
+                        <option value="day">اليوم</option>
+                        <option value="week">آخر أسبوع</option>
+                        <option value="month">آخر شهر</option>
+                        <option value="year">هذا العام</option>
+                        <option value="all" selected>كل الفترات</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="exportType" class="form-label">نوع التقرير</label>
+                    <select class="form-select" id="exportType" name="exportType">
+                        <option value="orders" selected>الطلبات</option>
+                        <option value="customers">العملاء</option>
+                        <option value="services">الخدمات</option>
+                        <option value="all">تقرير شامل</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="exportFormat" class="form-label">صيغة التصدير</label>
+                    <select class="form-select" id="exportFormat" name="exportFormat">
+                        <option value="pdf">PDF</option>
+                        <option value="excel" selected>Excel</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="text-end">
+            <button type="button" class="btn btn-primary" id="exportBtn">
+                <i class="fas fa-download me-1"></i> تصدير التقرير
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // رسم بياني للطلبات
+        var ordersCtx = document.getElementById('ordersChart').getContext('2d');
+        var ordersChart = new Chart(ordersCtx, {
+            type: 'line',
+            data: {
+                labels: {{ timeline_labels|tojson }},
+                datasets: [{
+                    label: 'الطلبات',
+                    data: {{ orders_data|tojson }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 2,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+        
+        // رسم بياني دائري لحالات الطلبات
+        var statusCtx = document.getElementById('statusPieChart').getContext('2d');
+        var statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ status_labels|tojson }},
+                datasets: [{
+                    data: {{ status_data|tojson }},
+                    backgroundColor: [
+                        '#e74c3c',  // أحمر للطلبات الجديدة
+                        '#f39c12',  // برتقالي للطلبات قيد المعالجة
+                        '#2ecc71',  // أخضر للطلبات المكتملة
+                        '#7f8c8d'   // رمادي للطلبات الملغاة
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+        
+        // زر تصدير التقارير
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            var period = document.getElementById('exportPeriod').value;
+            var type = document.getElementById('exportType').value;
+            var format = document.getElementById('exportFormat').value;
+            
+            // إنشاء URL لتصدير التقرير
+            var exportUrl = "{{ url_for('admin.export_report') }}";
+            exportUrl += "?period=" + period;
+            exportUrl += "&type=" + type;
+            exportUrl += "&format=" + format;
+            
+            // فتح الرابط في نافذة جديدة
+            window.open(exportUrl, '_blank');
+        });
+    });
+</script>
+{% endblock %}

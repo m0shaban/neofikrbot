@@ -1,0 +1,162 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}إدارة العملاء - NeoFikr Solutions{% endblock %}
+
+{% block page_title %}إدارة العملاء{% endblock %}
+
+{% block page_actions %}
+<form class="d-inline-flex gap-2 ms-auto">
+    <input type="text" name="search" class="form-control form-control-sm" placeholder="بحث..." value="{{ request.args.get('search', '') }}">
+    <button type="submit" class="btn btn-sm btn-primary">
+        <i class="fas fa-search me-1"></i> بحث
+    </button>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>الاسم</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>الهاتف</th>
+                        <th>عدد الطلبات</th>
+                        <th>تاريخ التسجيل</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td>{{ customer.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if customer.facebook_id %}
+                                <img src="https://graph.facebook.com/{{ customer.facebook_id }}/picture?type=normal" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="{{ customer.name }}">
+                                {% else %}
+                                <div class="rounded-circle me-2 bg-light d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="fas fa-user text-secondary"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <p class="fw-medium mb-0">{{ customer.name or 'غير محدد' }}</p>
+                                    {% if customer.facebook_id %}
+                                    <small class="text-muted">
+                                        <i class="fab fa-facebook text-primary me-1"></i>مستخدم فيسبوك
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ customer.email or 'غير محدد' }}</td>
+                        <td>{{ customer.phone or 'غير محدد' }}</td>
+                        <td><span class="badge bg-primary rounded-pill">{{ customer.orders|length }}</span></td>
+                        <td>{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.customer_details', customer_id=customer.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            {% if request.args.get('search') %}
+                                لم يتم العثور على عملاء مطابقين لـ "{{ request.args.get('search') }}"
+                            {% else %}
+                                لا يوجد عملاء مسجلين حتى الآن
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- التنقل بين الصفحات -->
+    {% if pagination.pages > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.customers', page=pagination.prev_num, search=request.args.get('search', '')) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active" aria-current="page">
+                            <a class="page-link" href="#">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.customers', page=page_num, search=request.args.get('search', '')) }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#">...</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.customers', page=pagination.next_num, search=request.args.get('search', '')) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- صفحة تفاصيل العميل -->
+<div class="card mt-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">إضافة عميل جديد</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('admin.customers') }}" method="post">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="name" class="form-label">الاسم الكامل</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="email" class="form-label">البريد الإلكتروني</label>
+                    <input type="email" class="form-control" id="email" name="email">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="phone" class="form-label">رقم الهاتف</label>
+                    <input type="tel" class="form-control" id="phone" name="phone">
+                </div>
+            </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus-circle me-1"></i> إضافة عميل
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
