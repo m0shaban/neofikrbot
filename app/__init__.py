@@ -18,6 +18,9 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI', 'sqlite:///chatbot.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
+    # إضافة متغير للدومين الحالي
+    app.config['BASE_URL'] = os.environ.get('BASE_URL', 'https://neofikrbot.onrender.com')
+    
     # ربط قاعدة البيانات مع التطبيق
     db.init_app(app)
     

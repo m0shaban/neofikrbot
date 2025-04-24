@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 import os
 import requests
 import json
 from app import db
 from app.models.customer import Customer
 from app.models.order import Order
+from app.models.conversation import Conversation
 from app.services.deepseek_service import process_with_deepseek
 from app.services.notification_service import send_email, send_whatsapp, send_telegram
 from datetime import datetime
@@ -14,6 +15,9 @@ webhook_bp = Blueprint('webhook', __name__)
 # تكوين معرف التحقق وتوكن صفحة فيسبوك
 VERIFY_TOKEN = os.environ.get('VERIFY_TOKEN', 'your_verify_token')
 PAGE_ACCESS_TOKEN = os.environ.get('PAGE_ACCESS_TOKEN', 'your_page_access_token')
+
+# الدومين الرئيسي للتطبيق - يمكن تغييره من خلال متغيرات البيئة
+BASE_DOMAIN = os.environ.get('BASE_DOMAIN', 'https://neofikrbot.onrender.com')
 
 @webhook_bp.route('/webhook', methods=['GET'])
 def verify_webhook():
@@ -35,9 +39,9 @@ def webhook():
                 user_info = get_user_info(sender_id)
                 
                 if 'message' in messaging_event:
-                    handle_message(sender_id, messaging_event['message'], user_info)
+                    handle_message(sender_id, messaging_event['message']['text'])
                 elif 'postback' in messaging_event:
-                    handle_postback(sender_id, messaging_event['postback'], user_info)
+                    handle_postback(sender_id, messaging_event['postback']['payload'])
                     
     return 'OK', 200
 
@@ -55,60 +59,90 @@ def get_user_info(sender_id):
         print(f"خطأ في الحصول على معلومات المستخدم: {e}")
         return {}
 
-def handle_message(sender_id, message, user_info):
-    """معالجة الرسائل النصية الواردة"""
-    if 'text' not in message:
-        # إذا لم تكن رسالة نصية، أرسل رسالة تطلب رسالة نصية
-        send_message(sender_id, "أرجو إرسال رسالة نصية.")
-        return
+def handle_message(sender_id, message_text):
+    """
+    معالجة الرسائل الواردة من المستخدم
+    :param sender_id: معرف المرسل
+    :param message_text: نص الرسالة
+    :return: None
+    """
+    # حفظ رسالة المستخدم في قاعدة البيانات
+    save_conversation(sender_id, 'user', message_text)
 
-    text = message['text']
-    
-    # معالجة النص باستخدام DeepSeek API
-    response_text = process_with_deepseek(text, user_info)
-    
-    # التحقق من وجود نية لتقديم طلب
-    if "طلب" in text or "خدمة" in text or "اطلب" in text or "سعر" in text or "استشارة" in text:
-        # حفظ الطلب المحتمل
-        save_order(sender_id, text, user_info)
+    # التحقق مما إذا كانت الرسالة تتعلق بطلب خدمة
+    if "طلب" in message_text or "خدمة" in message_text or "service" in message_text.lower() or "order" in message_text.lower():
+        # إرسال نموذج طلب الخدمة
+        send_order_form(sender_id)
+    else:
+        # الحصول على رد من DeepSeek
+        from app.services.deepseek_service import get_deepseek_response
+        response = get_deepseek_response(message_text)
         
-        # إرسال إشعار للإدارة
-        send_notification(sender_id, text, user_info)
-    
-    # الرد على المستخدم
-    send_message(sender_id, response_text)
+        # إرسال الرد إلى المستخدم
+        send_message(sender_id, response)
+        
+        # حفظ رد البوت في قاعدة البيانات
+        save_conversation(sender_id, 'bot', response)
 
-def handle_postback(sender_id, postback, user_info):
-    """معالجة الردود من القوائم والأزرار"""
-    payload = postback['payload']
+def handle_postback(sender_id, payload):
+    """
+    معالجة الردود من الأزرار
+    :param sender_id: معرف المرسل
+    :param payload: البيانات المرسلة من الزر
+    :return: None
+    """
+    # حفظ تفاعل المستخدم مع الأزرار في قاعدة البيانات
+    save_conversation(sender_id, 'user', f"[POSTBACK: {payload}]")
     
     if payload == 'GET_STARTED':
-        welcome_message = "مرحبًا 👋 معك شات بوت شركة NeoFikr Solutions 🚀\n\n"
-        welcome_message += "نقدّم لك حلولًا ذكية تساعدك على تطوير عملك باستخدام الذكاء الاصطناعي والتحول الرقمي.\n\n"
-        welcome_message += "اختر من القائمة التالية👇 أو اكتب رقم الخدمة التي تهمك:\n\n"
-        welcome_message += "1️⃣ خدمات الشركة\n"
-        welcome_message += "2️⃣ تحميل دليل أدوات الذكاء الاصطناعي\n"
-        welcome_message += "3️⃣ مشاهدة الكورسات والدورات\n"
-        welcome_message += "4️⃣ طلب استشارة أو عرض سعر\n"
-        welcome_message += "5️⃣ التحدث مع أحد أعضاء الفريق\n"
-        welcome_message += "📞 رقم التواصل: 01121891913"
-        
+        # إرسال رسالة ترحيبية
+        welcome_message = "مرحباً بك في بوت نيوفكر للذكاء الاصطناعي! 👋\n\nيمكنني مساعدتك في معرفة المزيد عن خدمات نيوفكر في مجال الذكاء الاصطناعي وتحويل الأعمال الرقمي. كيف يمكنني مساعدتك اليوم؟"
         send_message(sender_id, welcome_message)
         
-        # تخزين العميل في قاعدة البيانات
-        save_customer(sender_id, user_info)
-    
-    elif payload == 'SERVICES':
-        services_message = "خدمات الشركة نوفر مجموعة من الخدمات الذكية:\n"
-        services_message += "🔹 تصميم شات بوت احترافي\n"
-        services_message += "🔹 إنشاء CRM مخصص لإدارة العملاء\n"
-        services_message += "🔹 أدوات تحليل بيانات ومراقبة الأداء\n"
-        services_message += "🔹 أتمتة العمليات الرقمية\n"
-        services_message += "🔹 تصميم واجهات ذكية للتطبيقات\n"
-        services_message += "🔹 استشارات وتدريب في الذكاء الاصطناعي\n\n"
-        services_message += "اكتب رقم الخدمة لمزيد من التفاصيل."
+        # حفظ رد البوت في قاعدة البيانات
+        save_conversation(sender_id, 'bot', welcome_message)
         
-        send_message(sender_id, services_message)
+    elif payload == 'ORDER_FORM':
+        # إرسال نموذج طلب الخدمة
+        send_order_form(sender_id)
+        
+    elif payload == 'SERVICES_MENU':
+        # إرسال قائمة الخدمات
+        send_services_menu(sender_id)
+        
+    elif payload.startswith('SERVICE_'):
+        # تحديد الخدمة المطلوبة
+        service = payload.replace('SERVICE_', '')
+        
+        # إرسال معلومات عن الخدمة
+        if service == 'AI':
+            response = "تقدم نيوفكر حلول الذكاء الاصطناعي المخصصة لتلبية احتياجات عملك. من روبوتات الدردشة الذكية إلى أنظمة التعلم الآلي، نحن نساعدك على الاستفادة من قوة الذكاء الاصطناعي."
+        elif service == 'DIGITAL':
+            response = "خدمات التحول الرقمي من نيوفكر تساعدك على تحديث عملياتك وتحسين كفاءة عملك. نحن نقدم حلول رقمية متكاملة تناسب احتياجاتك الفريدة."
+        elif service == 'CONSULTING':
+            response = "استشاراتنا المتخصصة في مجال التكنولوجيا والذكاء الاصطناعي تساعدك على اتخاذ القرارات الصحيحة لنمو عملك. فريقنا من الخبراء جاهز لمساعدتك."
+        else:
+            response = "نعتذر، لا توجد معلومات متاحة عن هذه الخدمة حالياً. يرجى التواصل مع فريق الدعم للحصول على مزيد من المعلومات."
+            
+        send_message(sender_id, response)
+        
+        # حفظ رد البوت في قاعدة البيانات
+        save_conversation(sender_id, 'bot', response)
+        
+        # إضافة أزرار للإجراءات التالية
+        buttons = [
+            {
+                "type": "postback",
+                "title": "طلب هذه الخدمة",
+                "payload": "ORDER_FORM"
+            },
+            {
+                "type": "postback",
+                "title": "خدمات أخرى",
+                "payload": "SERVICES_MENU"
+            }
+        ]
+        send_button_message(sender_id, "ماذا تريد أن تفعل بعد ذلك؟", buttons)
 
 def save_customer(sender_id, user_info):
     """تخزين معلومات العميل في قاعدة البيانات"""
@@ -148,11 +182,11 @@ def save_order(sender_id, text, user_info):
                 service_type = "تحليل بيانات"
             elif "اتمتة" in text.lower() or "أتمتة" in text.lower():
                 service_type = "أتمتة عمليات"
-            elif "تصميم" in text.lower() or "واجهة" in text.lower():
+            elif "تصميم" في text.lower() or "واجهة" في text.lower():
                 service_type = "تصميم واجهات"
-            elif "تدريب" in text.lower() or "استشارة" in text.lower():
+            elif "تدريب" في text.lower() أو "استشارة" في text.lower():
                 service_type = "تدريب واستشارات"
-            elif "طلب" in text.lower() or "عرض سعر" in text.lower() or "خدمة" in text.lower():
+            elif "طلب" في text.lower() أو "عرض سعر" في text.lower() أو "خدمة" في text.lower():
                 service_type = "طلب خدمة"
             
             # إنشاء الطلب
@@ -201,7 +235,7 @@ def send_notification(sender_id, text, user_info):
 <b>📝 الرسالة:</b>
 <pre>{text}</pre>
 
-<i>يمكنك إدارة هذا الطلب من خلال <a href="http://admin.neofikr.com/orders">لوحة التحكم</a>.</i>
+<i>يمكنك إدارة هذا الطلب من خلال <a href="{BASE_DOMAIN}/orders">لوحة التحكم</a>.</i>
 """
         
         # محاولة الإرسال عبر تيليجرام (الوسيلة الرئيسية)
@@ -226,7 +260,7 @@ def send_notification(sender_id, text, user_info):
         {text}
         
         يمكنك إدارة هذا الطلب من خلال لوحة التحكم:
-        http://admin.neofikr.com/orders
+        {BASE_DOMAIN}/orders
         """
         
         # محاولة الإرسال عبر البريد الإلكتروني (اختياري)
@@ -283,3 +317,46 @@ def send_message(recipient_id, message_text):
     except Exception as e:
         print(f"خطأ في إرسال الرسالة: {e}")
         return None
+
+def save_conversation(sender_id, sender_type, message):
+    """
+    Guarda un mensaje en el historial de conversaciones
+    :param sender_id: ID del remitente (usuario de Facebook)
+    :param sender_type: Tipo de remitente ('user' o 'bot')
+    :param message: Texto del mensaje
+    :return: None
+    """
+    try:
+        # Buscar al cliente por su facebook_id
+        customer = Customer.query.filter_by(facebook_id=sender_id).first()
+        
+        if not customer:
+            # Si no existe el cliente, obtener información y guardarlo
+            user_info = get_user_info(sender_id)
+            customer = save_customer(sender_id, user_info)
+            
+            if not customer:
+                print(f"No se pudo guardar la conversación: Cliente no encontrado para {sender_id}")
+                return
+        
+        # Crear una nueva entrada en la conversación
+        conversation = Conversation(
+            customer_id=customer.id,  # Usar el ID del cliente de nuestra base de datos
+            message=message,
+            sender_type=sender_type,
+            timestamp=datetime.now()
+        )
+        
+        # Guardar en la base de datos
+        db.session.add(conversation)
+        db.session.commit()
+        
+        print(f"Conversación guardada para el cliente {customer.id} ({sender_type})")
+    except Exception as e:
+        print(f"Error al guardar la conversación: {str(e)}")
+        db.session.rollback()
+
+def send_customer_form(sender_id):
+    """إرسال استمارة للحصول على معلومات العميل"""
+    message_text = "يرجى ملء استمارة المعلومات التالية لتقديم الخدمة المطلوبة: https://example.com/form"
+    send_message(sender_id, message_text)
