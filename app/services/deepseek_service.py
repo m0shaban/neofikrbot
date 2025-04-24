@@ -9,6 +9,19 @@ DEFAULT_MODEL = os.environ.get('DEFAULT_MODEL', 'deepseek-chat')
 MAX_TOKENS = int(os.environ.get('MAX_TOKENS', 200))
 TEMPERATURE = float(os.environ.get('TEMPERATURE', 0.7))
 
+def get_deepseek_response(text):
+    """
+    معالجة رسائل المستخدم باستخدام DeepSeek API - واجهة مبسطة
+    
+    Args:
+        text (str): نص رسالة المستخدم
+        
+    Returns:
+        str: النص الناتج من DeepSeek للرد على المستخدم
+    """
+    # استدعاء الدالة الأساسية مع توفير user_info كقاموس فارغ
+    return process_with_deepseek(text, {})
+
 def process_with_deepseek(text, user_info):
     """
     معالجة رسائل المستخدم باستخدام DeepSeek API

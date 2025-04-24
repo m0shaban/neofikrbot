@@ -360,3 +360,100 @@ def send_customer_form(sender_id):
     """إرسال استمارة للحصول على معلومات العميل"""
     message_text = "يرجى ملء استمارة المعلومات التالية لتقديم الخدمة المطلوبة: https://example.com/form"
     send_message(sender_id, message_text)
+
+def send_order_form(sender_id):
+    """إرسال نموذج طلب الخدمة"""
+    # إعداد محتوى الرسالة
+    message_text = """لطلب خدمة من NeoFikr Solutions، يرجى تزويدنا بالمعلومات التالية:
+
+▪️ اسمك الكامل
+▪️ اسم الشركة أو المشروع
+▪️ نوع الخدمة المطلوبة (شات بوت، CRM، تحليل بيانات، إلخ)
+▪️ وصف مختصر لاحتياجاتك
+▪️ رقم الهاتف للتواصل
+▪️ البريد الإلكتروني (اختياري)
+
+سيقوم فريقنا بمراجعة طلبك والرد عليك في أقرب وقت ممكن."""
+
+    # إرسال الرسالة النصية
+    send_message(sender_id, message_text)
+    
+    # إضافة أزرار للخدمات الشائعة
+    buttons = [
+        {
+            "type": "postback",
+            "title": "شات بوت",
+            "payload": "SERVICE_CHATBOT"
+        },
+        {
+            "type": "postback",
+            "title": "نظام CRM",
+            "payload": "SERVICE_CRM"
+        },
+        {
+            "type": "postback",
+            "title": "استشارة تقنية",
+            "payload": "SERVICE_CONSULTING"
+        }
+    ]
+    
+    # إرسال رسالة مع أزرار
+    send_button_message(sender_id, "اختر نوع الخدمة من القائمة أو اكتب تفاصيل طلبك:", buttons)
+    
+    # تسجيل حدث الطلب للمتابعة
+    print(f"تم إرسال نموذج طلب الخدمة للمستخدم {sender_id}")
+
+def send_button_message(recipient_id, text, buttons):
+    """إرسال رسالة تحتوي على أزرار"""
+    params = {
+        "access_token": PAGE_ACCESS_TOKEN
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "recipient": {
+            "id": recipient_id
+        },
+        "message": {
+            "attachment": {
+                "type": "template",
+                "payload": {
+                    "template_type": "button",
+                    "text": text,
+                    "buttons": buttons
+                }
+            }
+        }
+    }
+    url = "https://graph.facebook.com/v19.0/me/messages"
+    
+    try:
+        response = requests.post(url, params=params, headers=headers, json=data)
+        return response.json()
+    except Exception as e:
+        print(f"خطأ في إرسال رسالة الأزرار: {e}")
+        return None
+
+def send_services_menu(sender_id):
+    """إرسال قائمة بالخدمات المتاحة"""
+    buttons = [
+        {
+            "type": "postback",
+            "title": "الذكاء الاصطناعي",
+            "payload": "SERVICE_AI"
+        },
+        {
+            "type": "postback",
+            "title": "التحول الرقمي",
+            "payload": "SERVICE_DIGITAL"
+        },
+        {
+            "type": "postback",
+            "title": "الاستشارات",
+            "payload": "SERVICE_CONSULTING"
+        }
+    ]
+    
+    send_button_message(sender_id, "اختر من خدماتنا المتخصصة:", buttons)
+    print(f"تم إرسال قائمة الخدمات للمستخدم {sender_id}")
