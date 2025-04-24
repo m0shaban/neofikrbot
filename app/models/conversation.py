@@ -5,7 +5,7 @@ class Conversation(db.Model):
     """Modelo para almacenar el historial de conversaciones con los usuarios"""
     
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
     sender_type = db.Column(db.String(10), nullable=False)  # 'user' o 'bot'
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
