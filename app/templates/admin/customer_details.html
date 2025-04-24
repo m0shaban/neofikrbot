@@ -1,0 +1,168 @@
+{% extends "admin/base.html" %}
+
+{% block title %}تفاصيل العميل - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2 class="text-primary">تفاصيل العميل</h2>
+            <div class="d-flex">
+                <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-secondary mb-3 ml-2">
+                    <i class="fas fa-arrow-right ml-1"></i> العودة إلى قائمة العملاء
+                </a>
+                {% if customer.facebook_id %}
+                <a href="https://m.me/{{ customer.facebook_id }}" target="_blank" class="btn btn-primary mb-3">
+                    <i class="fab fa-facebook-messenger ml-1"></i> مراسلة العميل
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card border-primary mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-user ml-2"></i> معلومات العميل</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-muted">معرف العميل:</div>
+                        <div class="col-md-8 font-weight-bold">{{ customer.id }}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 text-muted">الاسم:</div>
+                        <div class="col-md-8 font-weight-bold">{{ customer.name }}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 text-muted">رقم هوية فيسبوك:</div>
+                        <div class="col-md-8">{{ customer.facebook_id }}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 text-muted">تاريخ التسجيل:</div>
+                        <div class="col-md-8">{{ customer.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 text-muted">آخر تحديث:</div>
+                        <div class="col-md-8">{{ customer.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 text-muted">عدد الطلبات:</div>
+                        <div class="col-md-8 font-weight-bold">{{ orders|length }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- معلومات إضافية للعميل (يمكن إضافتها لاحقاً) -->
+            {% if customer.email or customer.phone %}
+            <div class="card border-info mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="fas fa-address-card ml-2"></i> معلومات الاتصال</h4>
+                </div>
+                <div class="card-body">
+                    {% if customer.email %}
+                    <div class="row">
+                        <div class="col-md-4 text-muted">البريد الإلكتروني:</div>
+                        <div class="col-md-8">{{ customer.email }}</div>
+                    </div>
+                    <hr>
+                    {% endif %}
+                    {% if customer.phone %}
+                    <div class="row">
+                        <div class="col-md-4 text-muted">رقم الهاتف:</div>
+                        <div class="col-md-8">{{ customer.phone }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-7">
+            <div class="card border-success mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-shopping-cart ml-2"></i> طلبات العميل</h4>
+                </div>
+                <div class="card-body p-0">
+                    {% if orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>التاريخ</th>
+                                    <th>نوع الخدمة</th>
+                                    <th>الحالة</th>
+                                    <th>عرض</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>{{ order.id }}</td>
+                                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ order.service_type }}</td>
+                                    <td>
+                                        <span class="badge badge-pill 
+                                            {% if order.status == 'جديد' %}badge-primary
+                                            {% elif order.status == 'قيد المعالجة' %}badge-warning
+                                            {% elif order.status == 'مكتمل' %}badge-success
+                                            {% elif order.status == 'ملغي' %}badge-danger
+                                            {% else %}badge-secondary{% endif %}">
+                                            {{ order.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.order_details', order_id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info m-3">لا توجد طلبات لهذا العميل بعد.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- إحصائيات نشاط العميل -->
+            <div class="card border-dark">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0"><i class="fas fa-chart-line ml-2"></i> إحصائيات النشاط</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3">
+                                <h5 class="text-muted">إجمالي الطلبات</h5>
+                                <h3 class="text-primary">{{ orders|length }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3">
+                                <h5 class="text-muted">طلبات مكتملة</h5>
+                                <h3 class="text-success">{{ orders|selectattr('status', 'equalto', 'مكتمل')|list|length }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3">
+                                <h5 class="text-muted">طلبات قيد المعالجة</h5>
+                                <h3 class="text-warning">{{ orders|selectattr('status', 'equalto', 'قيد المعالجة')|list|length }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
