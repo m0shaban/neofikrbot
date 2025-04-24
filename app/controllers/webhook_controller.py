@@ -182,11 +182,11 @@ def save_order(sender_id, text, user_info):
                 service_type = "تحليل بيانات"
             elif "اتمتة" in text.lower() or "أتمتة" in text.lower():
                 service_type = "أتمتة عمليات"
-            elif "تصميم" في text.lower() or "واجهة" في text.lower():
+            elif "تصميم" in text.lower() or "واجهة" in text.lower():
                 service_type = "تصميم واجهات"
-            elif "تدريب" في text.lower() أو "استشارة" في text.lower():
+            elif "تدريب" in text.lower() or "استشارة" in text.lower():
                 service_type = "تدريب واستشارات"
-            elif "طلب" في text.lower() أو "عرض سعر" في text.lower() أو "خدمة" في text.lower():
+            elif "طلب" in text.lower() or "عرض سعر" in text.lower() or "خدمة" in text.lower():
                 service_type = "طلب خدمة"
             
             # إنشاء الطلب
