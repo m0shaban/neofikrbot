@@ -1,4 +1,4 @@
-# Python
+# ملفات النظام
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,40 +20,25 @@ var/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-venv/
-ENV/
-env/
-
-# Database
+# ملفات قاعدة البيانات
 *.db
-*.sqlite
 *.sqlite3
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Environment variables
+# بيئات افتراضية
+venv/
+ENV/
 .env
-.env.*
-!.env.example
 
-# Logs
+# ملفات السجلات
 logs/
 *.log
 
-# التجاهل الخاص بـ flask
-instance/
-.webassets-cache
+# ملفات تهيئة النصوص
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# التجاهل الخاص بـ pytest
-.pytest_cache/
-.coverage
-htmlcov/
-
-# الملفات الناتجة عن التشغيل
+# ملفات أخرى
 .DS_Store
 Thumbs.db
