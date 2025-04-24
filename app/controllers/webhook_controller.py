@@ -138,31 +138,37 @@ def save_order(sender_id, text, user_info):
         customer = save_customer(sender_id, user_info)
         
         if customer:
-            # تحديد نوع الخدمة من الرسالة (مبسط)
+            # تحديد نوع الخدمة من الرسالة
             service_type = "استفسار عام"
-            if "شات بوت" in text or "chatbot" in text.lower():
+            if "شات بوت" in text.lower() or "chatbot" in text.lower():
                 service_type = "شات بوت"
-            elif "crm" in text.lower() or "ادارة العملاء" in text:
+            elif "crm" in text.lower() or "ادارة العملاء" in text.lower():
                 service_type = "CRM"
-            elif "تحليل" in text or "بيانات" in text:
+            elif "تحليل" in text.lower() or "بيانات" in text.lower():
                 service_type = "تحليل بيانات"
-            elif "اتمتة" in text or "أتمتة" in text:
+            elif "اتمتة" in text.lower() or "أتمتة" in text.lower():
                 service_type = "أتمتة عمليات"
-            elif "تصميم" in text or "واجهة" in text:
+            elif "تصميم" in text.lower() or "واجهة" in text.lower():
                 service_type = "تصميم واجهات"
-            elif "تدريب" in text or "استشارة" in text:
+            elif "تدريب" in text.lower() or "استشارة" in text.lower():
                 service_type = "تدريب واستشارات"
+            elif "طلب" in text.lower() or "عرض سعر" in text.lower() or "خدمة" in text.lower():
+                service_type = "طلب خدمة"
             
             # إنشاء الطلب
             order = Order(
                 customer_id=customer.id,
                 service_type=service_type,
-                details=text
+                details=text,
+                status="جديد"  # إضافة حالة الطلب الافتراضية
             )
             db.session.add(order)
             db.session.commit()
-            
+            print(f"تم حفظ الطلب بنجاح: {order.id}, العميل: {customer.name}, الخدمة: {service_type}")
             return order
+        else:
+            print("لم يتم إنشاء الطلب: لم يتم العثور على عميل أو إنشاؤه")
+            return None
     except Exception as e:
         print(f"خطأ في حفظ الطلب: {e}")
         db.session.rollback()
@@ -172,47 +178,86 @@ def send_notification(sender_id, text, user_info):
     """إرسال إشعارات للإدارة عن الطلبات الجديدة"""
     try:
         name = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}"
+        
+        # حفظ الطلب في قاعدة البيانات وإشعار للإدارة
+        order = save_order(sender_id, text, user_info)
+        
+        if not order:
+            print("فشل حفظ الطلب، سيتم محاولة إرسال الإشعارات فقط")
+        
+        # إعداد نص الإشعار
         subject = f"طلب جديد من {name} - NeoFikr Chatbot"
+        now_formatted = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # رسالة تيليجرام منسقة
+        telegram_message = f"""<b>🔔 طلب جديد من الشات بوت!</b>
+
+🧑‍💼 <b>اسم العميل:</b> {name}
+📱 <b>معرف فيسبوك:</b> {sender_id}
+⏰ <b>التاريخ:</b> {now_formatted}
+🏷️ <b>نوع الخدمة:</b> {order.service_type if order else "غير محدد"}
+🆔 <b>رقم الطلب:</b> {order.id if order else "لم يتم التسجيل"}
+
+<b>📝 الرسالة:</b>
+<pre>{text}</pre>
+
+<i>يمكنك إدارة هذا الطلب من خلال <a href="http://admin.neofikr.com/orders">لوحة التحكم</a>.</i>
+"""
+        
+        # محاولة الإرسال عبر تيليجرام (الوسيلة الرئيسية)
+        telegram_sent = send_telegram(telegram_message)
+        
+        if telegram_sent:
+            print("تم إرسال إشعار تيليجرام بنجاح")
+        else:
+            print("⚠️ فشل إرسال إشعار تيليجرام!")
+        
+        # إعداد نص البريد الإلكتروني
         body = f"""
         طلب جديد من الشات بوت:
         
         الاسم: {name}
         معرف فيسبوك: {sender_id}
+        التاريخ: {now_formatted}
+        نوع الخدمة: {order.service_type if order else "غير محدد"}
+        رقم الطلب: {order.id if order else "لم يتم التسجيل"}
         
         الرسالة:
         {text}
         
-        تم استلام الطلب في: {datetime.now()}
+        يمكنك إدارة هذا الطلب من خلال لوحة التحكم:
+        http://admin.neofikr.com/orders
         """
-        
-        # إرسال الإشعار عبر تيليجرام (كبديل أساسي)
-        telegram_message = f"""<b>طلب جديد من الشات بوت!</b>
-        
-🧑‍💼 <b>اسم العميل:</b> {name}
-📱 <b>معرف فيسبوك:</b> {sender_id}
-⏰ <b>التاريخ:</b> {datetime.now().strftime("%Y-%m-%d %H:%M")}
-        
-<b>الرسالة:</b>
-<pre>{text}</pre>
-        
-<i>يمكنك إدارة هذا الطلب من خلال لوحة التحكم.</i>
-"""
-        send_telegram(telegram_message)
         
         # محاولة الإرسال عبر البريد الإلكتروني (اختياري)
         try:
-            send_email('neofikrsolutions@gmail.com', subject, body)
-        except:
-            print("لم نتمكن من إرسال البريد الإلكتروني، تم الاكتفاء بإشعار تيليجرام")
+            email_sent = send_email('neofikrsolutions@gmail.com', subject, body)
+            if email_sent:
+                print("تم إرسال البريد الإلكتروني بنجاح")
+        except Exception as e:
+            print(f"فشل إرسال البريد الإلكتروني: {e}")
         
         # محاولة الإرسال عبر واتساب (اختياري)
         try:
-            send_whatsapp('01121891913', f"طلب جديد من {name}: {text[:100]}...")
-        except:
-            print("لم نتمكن من إرسال رسالة واتساب، تم الاكتفاء بإشعار تيليجرام")
+            # إعداد رسالة واتساب موجزة
+            whatsapp_message = f"🔔 *طلب جديد*\n👤 {name}\n📝 {text[:100]}...\n🕒 {now_formatted}"
+            whatsapp_sent = send_whatsapp('01121891913', whatsapp_message)
+            if whatsapp_sent:
+                print("تم إرسال رسالة واتساب بنجاح")
+        except Exception as e:
+            print(f"فشل إرسال رسالة واتساب: {e}")
+            
+        # إضافة تسجيل يوضح أن الطلب تم إشعار الإدارة به
+        if order:
+            order.notified = True
+            db.session.commit()
+            print(f"تم تحديث حالة الإشعار للطلب {order.id}")
+            
+        return True
             
     except Exception as e:
         print(f"خطأ في إرسال الإشعارات: {e}")
+        return False
 
 def send_message(recipient_id, message_text):
     """إرسال رسالة نصية إلى مستخدم فيسبوك"""

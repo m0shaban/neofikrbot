@@ -1,8 +1,13 @@
 import os
 import smtplib
 import requests
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+# إعداد التسجيل
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # إعدادات البريد الإلكتروني
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
@@ -14,9 +19,9 @@ SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', 'your_app_password')
 WHATSAPP_API_KEY = os.environ.get('WHATSAPP_API_KEY', 'your_whatsapp_api_key')
 WHATSAPP_PHONE_ID = os.environ.get('WHATSAPP_PHONE_ID', 'your_whatsapp_phone_id')
 
-# إعدادات تيليجرام
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'your_telegram_bot_token')
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', 'your_telegram_chat_id')
+# إعدادات تيليجرام - التأكد من استخدام القيم الصحيحة من متغيرات البيئة أو الإعدادات الافتراضية
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
 def send_email(to_email, subject, body):
     """
@@ -48,11 +53,11 @@ def send_email(to_email, subject, body):
             # إرسال البريد الإلكتروني
             server.send_message(msg)
             
-        print(f"تم إرسال البريد الإلكتروني بنجاح إلى {to_email}")
+        logger.info(f"تم إرسال البريد الإلكتروني بنجاح إلى {to_email}")
         return True
     
     except Exception as e:
-        print(f"خطأ في إرسال البريد الإلكتروني: {e}")
+        logger.error(f"خطأ في إرسال البريد الإلكتروني: {e}")
         return False
 
 def send_whatsapp(to_number, message):
@@ -69,7 +74,7 @@ def send_whatsapp(to_number, message):
     try:
         # في حالة عدم توفر أو تكوين API واتساب، سنقوم بتسجيل الرسالة فقط
         if WHATSAPP_API_KEY == 'your_whatsapp_api_key':
-            print(f"[محاكاة واتساب] إرسال إلى {to_number}: {message}")
+            logger.warning(f"[محاكاة واتساب] إرسال إلى {to_number}: {message}")
             return True
             
         # تأكد من وجود تنسيق بادئة الدولة ل to_number (مثل 201121891913)
@@ -99,14 +104,14 @@ def send_whatsapp(to_number, message):
         response = requests.post(url, headers=headers, json=data)
         
         if response.status_code == 200:
-            print(f"تم إرسال رسالة واتساب بنجاح إلى {to_number}")
+            logger.info(f"تم إرسال رسالة واتساب بنجاح إلى {to_number}")
             return True
         else:
-            print(f"فشل إرسال رسالة واتساب: {response.text}")
+            logger.error(f"فشل إرسال رسالة واتساب: {response.text}")
             return False
             
     except Exception as e:
-        print(f"خطأ في إرسال رسالة واتساب: {e}")
+        logger.error(f"خطأ في إرسال رسالة واتساب: {e}")
         return False
 
 def send_telegram(message):
@@ -120,10 +125,11 @@ def send_telegram(message):
         bool: نجاح أو فشل عملية الإرسال
     """
     try:
-        # في حالة عدم توفر بيانات تيليجرام، سنقوم بتسجيل الرسالة فقط
-        if TELEGRAM_BOT_TOKEN == 'your_telegram_bot_token':
-            print(f"[محاكاة تيليجرام] إرسال إلى {TELEGRAM_CHAT_ID}: {message}")
-            return True
+        # التحقق من وجود إعدادات تيليجرام
+        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+            logger.error("إعدادات تيليجرام غير مكتملة. يرجى التحقق من متغيرات البيئة TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID")
+            print(f"[خطأ تيليجرام] إعدادات تيليجرام غير مكتملة: {message}")
+            return False
             
         # إعداد طلب API تيليجرام
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -137,12 +143,12 @@ def send_telegram(message):
         response = requests.post(url, data=data)
         
         if response.status_code == 200:
-            print(f"تم إرسال رسالة تيليجرام بنجاح")
+            logger.info(f"تم إرسال رسالة تيليجرام بنجاح")
             return True
         else:
-            print(f"فشل إرسال رسالة تيليجرام: {response.text}")
+            logger.error(f"فشل إرسال رسالة تيليجرام: {response.text}")
             return False
             
     except Exception as e:
-        print(f"خطأ في إرسال رسالة تيليجرام: {e}")
+        logger.error(f"خطأ في إرسال رسالة تيليجرام: {e}")
         return False
